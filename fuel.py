@@ -1,0 +1,1 @@
+# Markhov chains - https://www.youtube.com/watch?v=bTeKu7WdbT8
