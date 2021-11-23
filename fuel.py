@@ -23,7 +23,7 @@
 
 # -- Python cases --
 # Input:
-# solution.solution([[0, 2, 1, 0, 0], [0, 0, 0, 3, 4], [0, 0, 0, 0, 0], [0, 0, 0, 0,0], [0, 0, 0, 0, 0]])
+# solution.solution([[0, 2, 1, 0, 0], [0, 0, 0, 3, 4], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]])
 # Output:
 #     [7, 6, 8, 21]
 
@@ -33,13 +33,13 @@
 #     [0, 3, 2, 9, 14]
 
 import numpy as np
-from fractions import gcd
+from fractions import gcd, Fraction
 from functools import reduce
 from copy import deepcopy
 from pprint import pprint
 
 
-def transform_to_tuples(states):
+def transform_to_fractions(states):
     for x in range(len(states)):
         only_zeros = True
         sum = 0
@@ -51,14 +51,13 @@ def transform_to_tuples(states):
         if only_zeros:
             for y in range(len(states[x])):
                 if y == x:
-                    states[x][y] = (1, 1)
+                    states[x][y] = Fraction(1, 1)
                 else:
-                    states[x][y] = (0, 1)
+                    states[x][y] = Fraction(0, 1)
         else:
             for y in range(len(states[x])):
-                states[x][y] = (states[x][y], sum)
+                states[x][y] = Fraction(states[x][y], sum)
     return states
-
 
 def populate_absorbing_states(states):
     for x in range(len(states)):
@@ -73,7 +72,6 @@ def populate_absorbing_states(states):
                     states[x][y] = 1
     return states
 
-
 def get_lcm(states):
     sums = []
     for line in states:
@@ -87,23 +85,10 @@ def get_lcm(states):
         absolute_multip = abs(absolute_multip * sum)
     return absolute_multip // reduce(gcd, sums)
 
-
-def make_all_states_equal(states, lcm):
-    for x in range(len(states)):
-        sum = 0
-        for y in range(len(states[x])):
-            sum += states[x][y]
-        multiply = lcm // sum
-        for y in range(len(states[x])):
-            states[x][y] *= multiply
-    return states
-
-
 def check_if_square(states):
     if len(states) != len(states[0]):
         return False
     return True
-
 
 def standard_form(states, lcm, states_original):
     absorbing_states_indexes = []
@@ -123,8 +108,11 @@ def standard_form(states, lcm, states_original):
             absorbing_states.append(states[x])
         else:
             nonabsorbing_states.append(states[x])
-    absorbing_states_indexes = [value for value in absorbing_states_indexes if value]
-    amount = len(absorbing_states_indexes)
+    
+    amount = 0
+    for value in absorbing_states_indexes:
+        if value:
+            amount += 1
     current_amount = amount
 
     standard_form = [[0 for _ in range(len(states))] for _ in range(len(states))]
@@ -149,13 +137,82 @@ def standard_form(states, lcm, states_original):
         for (y, y_changed) in zip(range(len(changes)), changes):
             standard_form[x_changed][y_changed] = states[x][y]
 
-    return (standard_form, amount)
-    
-            
-    
-    # TODO: set the matrix into a standard form
+    return (standard_form, amount, changes)
 
+def zeros_matrix(rows, cols):
+    A = []
+    for i in range(rows):
+        A.append([])
+        for j in range(cols):
+            A[-1].append(0.0)
 
+    return A
+
+def copy_matrix(M):
+    rows = len(M)
+    cols = len(M[0])
+
+    MC = zeros_matrix(rows, cols)
+
+    for i in range(rows):
+        for j in range(rows):
+            MC[i][j] = M[i][j]
+
+    return MC
+
+def matrix_multiply(A,B):
+    rowsA = len(A)
+    colsA = len(A[0])
+
+    rowsB = len(B)
+    colsB = len(B[0])
+
+    C = zeros_matrix(rowsA, colsB)
+
+    for i in range(rowsA):
+        for j in range(colsB):
+            total = 0
+            for ii in range(colsA):
+                total += A[i][ii] * B[ii][j]
+            C[i][j] = total
+
+    return C
+
+def invert_matrix(A, I):
+    """
+    Returns the inverse of the passed in matrix.
+        :param A: The matrix to be inversed
+ 
+        :return: The inverse of the matrix A
+    """
+    # Section 1: Make sure A can be inverted.
+ 
+    # Section 2: Make copies of A & I, AM & IM, to use for row ops
+    n = len(A)
+    AM = copy_matrix(A)
+    IM = copy_matrix(I)
+ 
+    # Section 3: Perform row operations
+    indices = list(range(n)) # to allow flexible row referencing ***
+    for fd in range(n): # fd stands for focus diagonal
+        fdScaler = 1.0 / AM[fd][fd]
+        # FIRST: scale fd row with fd inverse. 
+        for j in range(n): # Use j to indicate column looping.
+            AM[fd][j] *= fdScaler
+            IM[fd][j] *= fdScaler
+        # SECOND: operate on all rows except fd row as follows:
+        for i in indices[0:fd] + indices[fd+1:]: 
+            # *** skip row with fd in it.
+            crScaler = AM[i][fd] # cr stands for "current row".
+            for j in range(n): 
+                # cr - crScaler * fdRow, but one element at a time.
+                AM[i][j] = AM[i][j] - crScaler * AM[fd][j]
+                IM[i][j] = IM[i][j] - crScaler * IM[fd][j]
+    return IM
+
+def print_list(lst):
+    for line in lst:
+        print line
 
 def solution(states):
     if not check_if_square(deepcopy(states)):
@@ -163,21 +220,66 @@ def solution(states):
 
     states_original = deepcopy(states)
     states = populate_absorbing_states(states)
-    lcm = get_lcm(states)
-    states = make_all_states_equal(states, lcm)
-    # for line in states:
-    #     print line
-    states, amount = standard_form(states, lcm, states_original)
+    states = transform_to_fractions(states)
+    print_list(states)
+    lcm = Fraction(1, 1)
 
-    pass
-        
+    states, amount, changes = standard_form(states, lcm, states_original)
+    print_list(states)
+
+    dim_size = len(states) - amount
+    dim = (dim_size, dim_size)
+
+    Q_matrix = np.empty(dim, dtype=Fraction)
+    Q_matrix[:] = [state[amount:] for state in states[amount:]]
+    print "Q_matrix\n", Q_matrix
+
+    I_matrix = np.identity(dim_size, dtype=Fraction)
+    # for x in range(len(I_matrix)):
+    #     for y in range(len(I_matrix[x])):
+    #         if I_matrix[x][y] == 1:
+    #             I_matrix[x][y] = lcm
+    print "I_matrix\n", I_matrix
+    
+    R_matrix = np.zeros((dim_size, amount), dtype=Fraction)
+    R_matrix[:] = [state[:amount] for state in states[amount:]]
+    print "R_matrix\n", R_matrix
+
+    F_matrix_inv = I_matrix - Q_matrix
+    print "F_matrix_inv\n", F_matrix_inv
+
+    # F_matrix = np.zeros(dim)
+    # F_matrix[:] = invert_matrix(F_matrix_inv, I_matrix)
+
+    # FR_matrix = matrix_multiply(list(F_matrix), list(R_matrix))
+
+    # I_matrix = np.identity(amount)
+    # # for x in range(len(I_matrix)):
+    # #     for y in range(len(I_matrix[x])):
+    # #         if I_matrix[x][y] == 1:
+    # #             I_matrix[x][y] = lcm
+    # I_matrix = list(I_matrix)
+    
+    # limiting_matrix = [[0 for _ in range(len(states))] for _ in range(len(states))]
+
+    # for x in range(len(I_matrix)):
+    #     for y in range(len(I_matrix[x])):
+    #         limiting_matrix[x][y] = I_matrix[x][y]
+    
+    # for x in range(len(FR_matrix)):
+    #     for y in range(len(FR_matrix[x])):
+    #         limiting_matrix[x + amount][y] = FR_matrix[x][y]
+
+    # values = [0 for _ in range(amount + 1)]
+    # for y in range(amount):
+    #     for x in range(amount, len(states)):
+    #         values[changes.index(y) - (len(states) - amount)] += limiting_matrix[x][y]
+    # values[amount] = lcm
+    # return values
 
 
-lst_0 = [
-    [5, 2, 0],
-    [0, 0, 0],
-    [2, 0, 0]
-]
+
+lst_0 = [[0, 2, 1, 0, 0], [0, 0, 0, 3, 4], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0], [0, 0, 0, 0, 0]]
 
 lst_1 = [
   [0,1,0,0,0,1],  
@@ -188,14 +290,14 @@ lst_1 = [
   [0,0,0,0,0,0],  
 ]
 
-solution(lst_1)
+print solution(lst_1)
 
 
 # pprint(transform_to_tuples(deepcopy(lst)))
 
 # lst = populate_absorbing_states(lst)
 
-# arr = np.empty((len(lst), len(lst)), dtype=np.int)
+# arr = np.empty((len(lst), len(lst)))
 # arr[:] = lst
 # pprint(arr)
 
