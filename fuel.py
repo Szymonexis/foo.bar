@@ -1,12 +1,12 @@
 # Markhov chains - https://www.youtube.com/watch?v=bTeKu7WdbT8
 # For example, consider the matrix m:
 # [
-#   [0,1,0,0,0,1],  # s0, the initial state, goes to s1 and s5 with equal probability
-#   [4,0,0,3,2,0],  # s1 can become s0, s3, or s4, but with different probabilities
-#   [0,0,0,0,0,0],  # s2 is terminal, and unreachable (never observed in practice)
-#   [0,0,0,0,0,0],  # s3 is terminal
-#   [0,0,0,0,0,0],  # s4 is terminal
-#   [0,0,0,0,0,0],  # s5 is terminal
+#   [0,1,0,0,0,1],  
+#   [4,0,0,3,2,0],  
+#   [0,0,0,0,0,0],  
+#   [0,0,0,0,0,0],  
+#   [0,0,0,0,0,0],  
+#   [0,0,0,0,0,0],  
 # ]
 # So, we can consider different paths to terminal states, such as:
 # s0 -> s1 -> s3
@@ -37,8 +37,6 @@ from fractions import gcd
 from functools import reduce
 from copy import deepcopy
 from pprint import pprint
-
-from numpy.lib.histograms import _search_sorted_inclusive
 
 
 def transform_to_tuples(states):
@@ -116,7 +114,7 @@ def standard_form(states, lcm, states_original):
                 only_zeros = False
         absorbing_states_indexes.append(only_zeros)
     
-    changes = [[(x, y) for y in range(len(states))] for x in range(len(states))]
+    changes = [-1 for x in range(len(states))]
     absorbing_states = []
     nonabsorbing_states = []
 
@@ -127,6 +125,33 @@ def standard_form(states, lcm, states_original):
             nonabsorbing_states.append(states[x])
     absorbing_states_indexes = [value for value in absorbing_states_indexes if value]
     amount = len(absorbing_states_indexes)
+    current_amount = amount
+
+    standard_form = [[0 for _ in range(len(states))] for _ in range(len(states))]
+    for x in range(len(absorbing_states)):
+        state = absorbing_states[x]
+        for y in range(len(state)):
+            if state[y] == lcm:
+                changes[y] = amount - current_amount
+                current_amount -= 1
+                break
+
+    missing = [x for x in range(len(states))]
+    for value in changes:
+        if not value == -1:
+            missing.remove(value)
+
+    for x in range(len(changes)):
+        if changes[x] == -1:
+            changes[x] = missing.pop()
+
+    for (x, x_changed) in zip(range(len(changes)), changes):
+        for (y, y_changed) in zip(range(len(changes)), changes):
+            standard_form[x_changed][y_changed] = states[x][y]
+
+    return (standard_form, amount)
+    
+            
     
     # TODO: set the matrix into a standard form
 
@@ -140,20 +165,30 @@ def solution(states):
     states = populate_absorbing_states(states)
     lcm = get_lcm(states)
     states = make_all_states_equal(states, lcm)
-    standard_form(states, lcm, states_original)
-
+    # for line in states:
+    #     print line
+    states, amount = standard_form(states, lcm, states_original)
 
     pass
         
 
 
-lst = [
+lst_0 = [
     [5, 2, 0],
     [0, 0, 0],
     [2, 0, 0]
 ]
 
-solution(lst)
+lst_1 = [
+  [0,1,0,0,0,1],  
+  [4,0,0,3,2,0],  
+  [0,0,0,0,0,0],  
+  [0,0,0,0,0,0],  
+  [0,0,0,0,0,0],  
+  [0,0,0,0,0,0],  
+]
+
+solution(lst_1)
 
 
 # pprint(transform_to_tuples(deepcopy(lst)))
