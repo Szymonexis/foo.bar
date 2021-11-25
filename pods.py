@@ -63,3 +63,5 @@
 #                                    [0, 0, 0, 0, 0, 0]])
 # Output:
 #     16
+
+# This is a Maximum Flow Problem - https://en.wikipedia.org/wiki/Maximum_flow_problem
